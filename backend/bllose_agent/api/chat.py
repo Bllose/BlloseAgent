@@ -4,8 +4,8 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter
 from sse_starlette.sse import EventSourceResponse
 
-from src.models.request import ChatRequest
-from src.services.agent_service import AgentService
+from bllose_agent.models.request import ChatRequest
+from bllose_agent.services.agent_service import AgentService
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 

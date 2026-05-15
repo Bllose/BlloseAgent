@@ -1,7 +1,7 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from src.agent.intent.state import IntentAgentState
-from src.config.settings import settings
+from bllose_agent.agent.intent.state import IntentAgentState
+from bllose_agent.config.settings import settings
 
 INTENT_PROMPT = """Analyze the user's message and classify it into exactly one of these intents:
 

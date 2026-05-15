@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from src.models.response import AgentInfoResponse
-from src.config.settings import settings
+from bllose_agent.models.response import AgentInfoResponse
+from bllose_agent.config.settings import settings
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 

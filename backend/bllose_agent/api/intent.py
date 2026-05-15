@@ -5,8 +5,8 @@ from fastapi import APIRouter
 from sse_starlette.sse import EventSourceResponse
 from langchain_core.messages import HumanMessage
 
-from src.models.request import ChatRequest
-from src.agent.intent.graph import intent_graph
+from bllose_agent.models.request import ChatRequest
+from bllose_agent.agent.intent.graph import intent_graph
 
 router = APIRouter(prefix="/intent", tags=["intent"])
 

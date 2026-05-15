@@ -1,5 +1,5 @@
 from httpx import ASGITransport, AsyncClient
-from src.main import app
+from bllose_agent.main import app
 
 
 async def test_chat_stream_no_api_key():

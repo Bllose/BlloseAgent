@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, END
 
-from src.agent.intent.state import IntentAgentState
-from src.agent.intent.nodes import classify_intent_node, handle_intent_node
+from bllose_agent.agent.intent.state import IntentAgentState
+from bllose_agent.agent.intent.nodes import classify_intent_node, handle_intent_node
 
 
 def build_intent_graph() -> StateGraph:
