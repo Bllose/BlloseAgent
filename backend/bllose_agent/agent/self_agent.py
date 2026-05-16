@@ -29,11 +29,12 @@ from bllose_agent.services.team_manager import (
     MessageBus,
     TeammateManager,
 )
+from bllose_agent.services.token_tracker import GlobalTokenTracker
 
 WORKDIR = Path(__file__).resolve().parent.parent.parent  # backend/
 TEAM_DIR = WORKDIR / ".team"
 INBOX_DIR = TEAM_DIR / "inbox"
-POLL_INTERVAL = 2  # seconds
+POLL_INTERVAL = 1  # seconds
 
 
 class SelfAgent:
@@ -50,6 +51,7 @@ class SelfAgent:
         self._agents: dict[str, BaseAgent] = {}
         self._poll_thread: threading.Thread | None = None
         self._shutdown_flag = threading.Event()
+        self.token_tracker = GlobalTokenTracker()
 
     # ── Lifecycle ───────────────────────────────────────────────
 
@@ -59,6 +61,12 @@ class SelfAgent:
         Returns a summary of what was started.
         """
         lines: list[str] = []
+
+        # 0. Clear leftover inbox messages from previous sessions
+        #    (prevents stale shutdown_request from killing agents at birth)
+        for inbox_name in ["self_agent", "bllose", "Coding Leader", "Paper Leader"]:
+            self.bus.read_inbox(inbox_name)
+        lines.append("inboxes cleared")
 
         # 1. Register self_agent
         self.team.register("self_agent", "self_agent")
@@ -127,8 +135,8 @@ class SelfAgent:
                 msgs = self.bus.read_inbox("self_agent")
                 for msg in msgs:
                     self._dispatch(msg)
-            except Exception:
-                pass  # Don't crash the poll loop on transient errors
+            except Exception as e:
+                print(f"[self_agent] Dispatch error: {e}")
             time.sleep(POLL_INTERVAL)
 
     def _dispatch(self, msg: dict) -> None:
@@ -149,19 +157,43 @@ class SelfAgent:
 
         Recognized actions (JSON-encoded in content):
           - {"action": "request_expert", "role": "...", "task": "..."}
+
+        Falls back to keyword matching when the content is natural language
+        (e.g. bllose sending a plain-text dispatch request).
         """
+        # 1. Try structured JSON
         try:
             data = json.loads(content)
         except (json.JSONDecodeError, TypeError):
-            return  # Not JSON — ignore (could be a plain message)
+            data = None
 
-        action = data.get("action", "")
-        if action == "request_expert":
+        if data and data.get("action") == "request_expert":
             self._handle_expert_request(
                 role=data.get("role", ""),
                 task=data.get("task", ""),
                 requester=sender,
             )
+            return
+
+        # 2. Natural-language fallback — detect expert dispatch intent
+        content_lower = content.lower()
+        role_keywords: dict[str, list[str]] = {
+            "coding_leader": [
+                "coding leader", "code agent", "coding_leader",
+                "codingleader", "code leader",
+            ],
+            "paper_leader": [
+                "paper leader", "paper_leader", "paperleader",
+            ],
+        }
+        for role, keywords in role_keywords.items():
+            if any(kw in content_lower for kw in keywords):
+                self._handle_expert_request(
+                    role=role,
+                    task=content,
+                    requester=sender,
+                )
+                return
 
     def _handle_expert_request(
         self, role: str, task: str, requester: str

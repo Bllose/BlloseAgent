@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { StatusPanel } from "@/components/status/StatusPanel";
+import { getTokenStats } from "@/lib/api";
 
 type Tab = "chat" | "status";
 
@@ -17,12 +18,28 @@ export default function HomePage() {
   const { isLoggedIn, email, logout } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("chat");
+  const [totalTokens, setTotalTokens] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) {
       router.replace("/login");
     }
   }, [isLoggedIn, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTokens() {
+      try {
+        const stats = await getTokenStats();
+        if (!cancelled) setTotalTokens(stats.total_tokens);
+      } catch {
+        // token stats not critical — ignore errors
+      }
+    }
+    fetchTokens();
+    const interval = setInterval(fetchTokens, 8000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   if (!isLoggedIn) return null;
 
@@ -41,7 +58,25 @@ export default function HomePage() {
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 18, fontWeight: 700 }}>BlloseAgent</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 18, fontWeight: 700 }}>BlloseAgent</span>
+          {totalTokens !== null && totalTokens > 0 && (
+            <span
+              style={{
+                fontSize: 11,
+                color: "#888",
+                background: "#f5f5f5",
+                padding: "2px 10px",
+                borderRadius: 10,
+              }}
+            >
+              {totalTokens >= 1000
+                ? `${(totalTokens / 1000).toFixed(1)}K`
+                : totalTokens}{" "}
+              tokens
+            </span>
+          )}
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <span style={{ fontSize: 14, color: "#666" }}>{email}</span>
@@ -113,8 +148,12 @@ export default function HomePage() {
             overflow: "hidden",
           }}
         >
-          {activeTab === "chat" && <ChatPanel />}
-          {activeTab === "status" && <StatusPanel />}
+          <div style={{ display: activeTab === "chat" ? "flex" : "none", flex: 1, minHeight: 0, flexDirection: "column" }}>
+            <ChatPanel />
+          </div>
+          <div style={{ display: activeTab === "status" ? "flex" : "none", flex: 1, minHeight: 0, flexDirection: "column" }}>
+            <StatusPanel />
+          </div>
         </div>
       </main>
     </div>

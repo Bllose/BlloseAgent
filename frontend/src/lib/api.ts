@@ -1,3 +1,5 @@
+import type { AgentStatus, GlobalTokenStats } from "@/types";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface StreamCallbacks {
@@ -63,4 +65,16 @@ export async function postChatStream(
   } catch (err) {
     onError(err instanceof Error ? err : new Error(String(err)));
   }
+}
+
+export async function getAgentStatuses(): Promise<AgentStatus[]> {
+  const res = await fetch(`${API_URL}/api/agent/status`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getTokenStats(): Promise<GlobalTokenStats> {
+  const res = await fetch(`${API_URL}/api/agent/tokens`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }

@@ -6,18 +6,23 @@ from langchain_core.messages import HumanMessage
 from bllose_agent.services.team_manager import BUS, get_self_agent
 
 
-def _classify(content) -> tuple[str, str]:
-    """Return (event_type, extracted_text) for a chunk of LLM content."""
+def _classify(content) -> tuple[str, str] | None:
+    """Return (event_type, extracted_text) for a chunk of LLM content.
+
+    Returns None for tool-call internals (tool_use, input_json_delta) —
+    those are surfaced via on_tool_start / on_tool_end events instead.
+    """
     if isinstance(content, str):
         return ("text", content)
     if isinstance(content, list):
         for block in content:
             if isinstance(block, dict):
-                if block.get("type") == "thinking":
+                block_type = block.get("type", "")
+                if block_type == "thinking":
                     return ("thinking", str(block.get("thinking", "")))
-                if "text" in block:
-                    return ("text", str(block["text"]))
-    return ("text", str(content))
+                if block_type == "text":
+                    return ("text", str(block.get("text", "")))
+    return None
 
 
 class AgentService:
@@ -47,17 +52,34 @@ class AgentService:
                 content=f"<inbox>{json.dumps(inbox, indent=2)}</inbox>"
             ))
 
+        # Estimate input tokens before the call
+        tracker = self._self_agent.token_tracker.agent("bllose")
+        input_est = tracker.estimate(messages)
+
         bllose.set_status("working")
 
+        output_tokens = 0
+
         inputs = {"messages": messages}
-        async for event in bllose.graph.astream_events(inputs, version="v2"):
+        async for event in bllose.graph.astream_events(
+            inputs, version="v2",
+            config={"recursion_limit": 100},
+        ):
             kind = event["event"]
 
             if kind == "on_chat_model_stream":
                 chunk = event["data"]["chunk"]
                 if hasattr(chunk, "content") and chunk.content:
-                    event_type, text = _classify(chunk.content)
-                    yield {"type": event_type, "content": text}
+                    result = _classify(chunk.content)
+                    if result is not None:
+                        yield {"type": result[0], "content": result[1]}
+
+            elif kind == "on_chat_model_end":
+                output = event["data"].get("output")
+                if hasattr(output, "usage_metadata"):
+                    output_tokens += output.usage_metadata.get(
+                        "output_tokens", 0
+                    )
 
             elif kind == "on_tool_start":
                 yield {
@@ -71,5 +93,8 @@ class AgentService:
                     "name": event["name"],
                     "output": str(event["data"].get("output", "")),
                 }
+
+        # Record this turn's token usage
+        tracker.record(input_est, output_tokens)
 
         bllose.set_status("idle")

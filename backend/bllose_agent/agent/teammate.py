@@ -14,6 +14,7 @@ manage lifecycle uniformly.
 import asyncio
 import json
 import threading
+import traceback
 from pathlib import Path
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -24,7 +25,7 @@ from langchain_core.tools import tool
 from bllose_agent.agent.base_agent import AgentStatus, BaseAgent
 from bllose_agent.agent.state import AgentState
 from bllose_agent.config.settings import settings
-from bllose_agent.services.team_manager import BUS, TEAM, VALID_MSG_TYPES, MessageBus, TeammateManager
+from bllose_agent.services.team_manager import BUS, TEAM, VALID_MSG_TYPES, MessageBus, TeammateManager, get_self_agent
 
 WORKDIR = Path(__file__).resolve().parent.parent.parent  # backend/
 
@@ -57,7 +58,7 @@ Guidelines:
 - For casual chat, questions, or simple file operations — handle them yourself.
 - For complex coding tasks — use request_expert to ask for Coding Leader.
 - For paper interpretation or research questions — use request_expert to ask for Paper Leader.
-- Check your inbox with **read_inbox** to see replies from teammates and self_agent.
+- After calling request_expert, check your inbox ONCE with read_inbox. If empty, tell the user the expert has been dispatched and is working — do NOT keep polling in a loop. The result will arrive in your inbox and you'll see it on the user's next message.
 - Use **broadcast** only when everyone needs the same information.
 
 Always be concise and helpful. If you delegate, tell the user which expert you're involving and why."""
@@ -124,7 +125,7 @@ def _make_file_tools():
                 command, shell=True, cwd=WORKDIR,
                 capture_output=True, text=True, timeout=120,
             )
-            out = (r.stdout + r.stderr).strip()
+            out = ((r.stdout or "") + (r.stderr or "")).strip()
             return out[:50000] if out else "(no output)"
         except subprocess.TimeoutExpired:
             return "Error: Timeout (120s)"
@@ -189,19 +190,50 @@ def _make_comms_tools(sender_name: str):
     return send_message, read_inbox
 
 
+def _make_bllose_tools():
+    """Create tools exclusive to bllose (intent_recognition lead agent)."""
+
+    @tool
+    def list_teammates() -> str:
+        """List all registered teammates and their current statuses."""
+        return TEAM.list_all()
+
+    @tool
+    def request_expert(role: str, task: str) -> str:
+        """Ask self_agent to dispatch an expert agent to handle a task.
+
+        Use this to delegate complex work to specialist agents.
+        Valid roles: 'coding_leader' (code development, debugging, refactoring),
+        'paper_leader' (paper interpretation, research, summaries).
+
+        Args:
+            role: The expert role key (e.g. 'coding_leader', 'paper_leader').
+            task: Detailed description of what the expert should do.
+        """
+        content = json.dumps({
+            "action": "request_expert",
+            "role": role,
+            "task": task,
+        })
+        return BUS.send("bllose", "self_agent", content, "task_assignment")
+
+    return list_teammates, request_expert
+
+
 def build_tools_for(sender_name: str, role: str) -> list:
     """Build the complete tool set for a given agent name and role."""
     bash, read_f, write_f, edit_f = _make_file_tools()
     send_msg, read_inbox = _make_comms_tools(sender_name)
 
-    common = [read_f, write_f, send_msg, read_inbox]
-
-    if role in ("intent_recognition", "coding_leader"):
+    if role == "intent_recognition":
+        list_tm, req_exp = _make_bllose_tools()
+        return [bash, read_f, write_f, edit_f, send_msg, read_inbox, list_tm, req_exp]
+    elif role == "coding_leader":
         return [bash, read_f, write_f, edit_f, send_msg, read_inbox]
     elif role == "paper_leader":
-        return common
+        return [read_f, write_f, send_msg, read_inbox]
     else:
-        return common
+        return [read_f, write_f, send_msg, read_inbox]
 
 
 # ── Graph builder ────────────────────────────────────────────────
@@ -262,7 +294,7 @@ def build_teammate_graph(name: str, role: str) -> StateGraph:
 #  Agent classes (implement BaseAgent — managed by SelfAgent)
 # ══════════════════════════════════════════════════════════════════
 
-POLL_INTERVAL = 2  # seconds between inbox checks
+POLL_INTERVAL = 1  # seconds between inbox checks
 
 
 class BlloseAgent(BaseAgent):
@@ -380,6 +412,9 @@ class TeammateAgent(BaseAgent):
         )
         self._thread.start()
 
+        alive = self._thread.is_alive()
+        print(f"[{self._name}] Thread spawned (alive={alive})")
+
     def stop(self) -> None:
         """Signal shutdown and wait for the background thread to exit."""
         self._shutdown_flag.set()
@@ -393,57 +428,86 @@ class TeammateAgent(BaseAgent):
 
     async def _agent_loop(self) -> None:
         """Poll inbox, process tasks, report results."""
-        graph = build_teammate_graph(self._name, self._role)
-        self._status = "idle"
-        self._team.set_status(self._name, "idle")
+        try:
+            graph = build_teammate_graph(self._name, self._role)
+            self._status = "idle"
+            self._team.set_status(self._name, "idle")
+        except Exception as e:
+            print(f"[{self._name}] FATAL — graph build failed: {e}")
+            self._status = "shutdown"
+            self._team.set_status(self._name, "shutdown")
+            return
+
+        print(f"[{self._name}] Agent loop running (status=idle, poll={POLL_INTERVAL}s)")
 
         while not self._shutdown_flag.is_set():
-            inbox = self._bus.read_inbox(self._name)
+            try:
+                inbox = self._bus.read_inbox(self._name)
 
-            for msg in inbox:
-                msg_type = msg.get("type", "message")
+                for msg in inbox:
+                    msg_type = msg.get("type", "message")
 
-                if msg_type == "shutdown_request":
-                    self._bus.send(
-                        self._name, "self_agent",
-                        f"{self._name} shutting down.",
-                        "shutdown_response",
-                    )
-                    self._status = "shutdown"
-                    self._team.set_status(self._name, "shutdown")
-                    return
+                    if msg_type == "shutdown_request":
+                        self._bus.send(
+                            self._name, "self_agent",
+                            f"{self._name} shutting down.",
+                            "shutdown_response",
+                        )
+                        self._status = "shutdown"
+                        self._team.set_status(self._name, "shutdown")
+                        return
 
-                self._status = "working"
-                self._team.set_status(self._name, "working")
-                sender = msg.get("from", "unknown")
-                content = msg.get("content", "")
+                    self._status = "working"
+                    self._team.set_status(self._name, "working")
+                    sender = msg.get("from", "unknown")
+                    content = msg.get("content", "")
 
-                try:
-                    inputs = {"messages": [HumanMessage(content=content)]}
-                    result = await graph.ainvoke(inputs)
-                    last_msg = result["messages"][-1]
-                    reply = (
-                        str(last_msg.content)
-                        if hasattr(last_msg, "content")
-                        else str(last_msg)
-                    )
-                    # Send result back to the requester
-                    self._bus.send(self._name, sender, reply, "status_report")
-                    # Also report to self_agent so it can sync status
-                    self._bus.send(
-                        self._name, "self_agent",
-                        reply, "status_report",
-                    )
-                except Exception as e:
-                    self._bus.send(
-                        self._name, sender,
-                        f"Error processing task: {e}", "status_report",
-                    )
+                    try:
+                        # Token tracking: estimate input before call
+                        sa = get_self_agent()
+                        tracker = sa.token_tracker.agent(self._name)
+                        messages = [HumanMessage(content=content)]
+                        input_est = tracker.estimate(messages)
 
-                self._status = "idle"
-                self._team.set_status(self._name, "idle")
+                        inputs = {"messages": messages}
+                        result = await graph.ainvoke(inputs)
+                        last_msg = result["messages"][-1]
 
-            await asyncio.sleep(POLL_INTERVAL)
+                        # Extract actual output tokens from response metadata
+                        output_tokens = 0
+                        if hasattr(last_msg, "usage_metadata"):
+                            output_tokens = last_msg.usage_metadata.get(
+                                "output_tokens", 0
+                            )
+                        tracker.record(input_est, output_tokens)
+
+                        reply = (
+                            str(last_msg.content)
+                            if hasattr(last_msg, "content")
+                            else str(last_msg)
+                        )
+                        self._bus.send(self._name, sender, reply, "status_report")
+                        self._bus.send(
+                            self._name, "self_agent",
+                            reply, "status_report",
+                        )
+                    except Exception as e:
+                        print(
+                            f"[{self._name}] Task error:\n"
+                            f"{traceback.format_exc()}"
+                        )
+                        self._bus.send(
+                            self._name, sender,
+                            f"Error processing task: {e}", "status_report",
+                        )
+
+                    self._status = "idle"
+                    self._team.set_status(self._name, "idle")
+
+                await asyncio.sleep(POLL_INTERVAL)
+            except Exception as e:
+                print(f"[{self._name}] Error in agent loop: {e}")
+                await asyncio.sleep(POLL_INTERVAL)
 
 
 # ── Legacy free-function loop (kept for backwards compat) ─────────

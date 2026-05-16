@@ -17,3 +17,28 @@ export interface StreamEvent {
   name?: string;
   output?: string;
 }
+
+export interface AgentStatus {
+  name: string;
+  role: string;
+  status: string;
+  details: string;
+}
+
+export interface TokenStats {
+  agent_name: string;
+  total_input: number;
+  total_output: number;
+  total_tokens: number;
+  max_input: number;
+  turn_count: number;
+}
+
+export interface GlobalTokenStats {
+  agents: TokenStats[];
+  total_input: number;
+  total_output: number;
+  total_tokens: number;
+  max_input: number;
+  agent_count: number;
+}
