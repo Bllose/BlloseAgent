@@ -474,12 +474,23 @@ class TeammateAgent(BaseAgent):
                         all_msgs = result["messages"]
                         last_msg = all_msgs[-1]
 
-                        # Extract actual output tokens from response metadata
-                        output_tokens = 0
+                        # User-facing output: just the final reply's tokens
+                        output_actual = 0
                         if hasattr(last_msg, "usage_metadata"):
-                            output_tokens = last_msg.usage_metadata.get(
+                            output_actual = last_msg.usage_metadata.get(
                                 "output_tokens", 0
                             )
+
+                        # All-in / all-out: sum EVERY LLM call in the ReAct loop
+                        # (agent→tools→agent→…) so users see the full cost
+                        all_input = 0
+                        all_output = 0
+                        for m in all_msgs:
+                            um = getattr(m, "usage_metadata", None)
+                            if um:
+                                all_input += um.get("input_tokens", 0)
+                                all_output += um.get("output_tokens", 0)
+
                         reply = (
                             str(last_msg.content)
                             if hasattr(last_msg, "content")
@@ -489,7 +500,9 @@ class TeammateAgent(BaseAgent):
                         from bllose_agent.services.token_tracker import serialize_messages
                         graph_snapshot = serialize_messages(all_msgs)
                         tracker.record(
-                            input_est, output_tokens,
+                            input_est, output_actual,
+                            all_input=all_input,
+                            all_output=all_output,
                             input_text=content,
                             output_text=reply,
                             graph_messages=graph_snapshot,

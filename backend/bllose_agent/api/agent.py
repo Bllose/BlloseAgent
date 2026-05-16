@@ -65,6 +65,8 @@ async def get_token_stats():
                 total_tokens=s.total_tokens,
                 max_input=s.max_input,
                 turn_count=s.turn_count,
+                all_input=s.total_all_input,
+                all_output=s.total_all_output,
             )
             for s in tt.all_stats
         ],
@@ -73,6 +75,8 @@ async def get_token_stats():
         total_tokens=tt.total_tokens,
         max_input=tt.max_input,
         agent_count=tt.agent_count,
+        total_all_input=tt.total_all_input,
+        total_all_output=tt.total_all_output,
     )
 
 

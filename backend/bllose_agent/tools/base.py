@@ -92,7 +92,7 @@ def send_message(to: str, content: str, msg_type: str = "task_assignment") -> st
     The teammate will pick it up from their inbox and process it.
 
     Args:
-        to: The teammate's name (e.g. 'Coding Leader', 'Paper Leader').
+        to: The teammate's name (e.g. 'coding_leader', 'paper_leader').
         content: The task description or message body.
         msg_type: 'task_assignment' (default), 'message', 'broadcast',
             'shutdown_request', 'shutdown_response', 'status_report'.

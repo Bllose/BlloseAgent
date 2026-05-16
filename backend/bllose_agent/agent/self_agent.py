@@ -64,7 +64,7 @@ class SelfAgent:
 
         # 0. Clear leftover inbox messages from previous sessions
         #    (prevents stale shutdown_request from killing agents at birth)
-        for inbox_name in ["self_agent", "bllose", "Coding Leader", "Paper Leader"]:
+        for inbox_name in ["self_agent", "bllose", "coding_leader", "paper_leader"]:
             self.bus.read_inbox(inbox_name)
         lines.append("inboxes cleared")
 
@@ -85,8 +85,8 @@ class SelfAgent:
         from bllose_agent.agent.teammate import TeammateAgent
 
         for name, role in [
-            ("Coding Leader", "coding_leader"),
-            ("Paper Leader", "paper_leader"),
+            ("coding_leader", "coding_leader"),
+            ("paper_leader", "paper_leader"),
         ]:
             agent = TeammateAgent(name, role, self.bus, self.team)
             agent.start()
@@ -199,12 +199,8 @@ class SelfAgent:
         self, role: str, task: str, requester: str
     ) -> None:
         """Ensure the expert is running, then forward the task."""
-        # Map role to agent name
-        role_name_map = {
-            "coding_leader": "Coding Leader",
-            "paper_leader": "Paper Leader",
-        }
-        expert_name = role_name_map.get(role, role)
+        # Role keys ARE the agent names (lowercase + underscore)
+        expert_name = role
 
         # If expert isn't registered yet, spawn it dynamically
         if expert_name not in self._agents:

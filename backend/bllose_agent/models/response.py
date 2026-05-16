@@ -21,6 +21,8 @@ class TokenStatsResponse(BaseModel):
     total_tokens: int
     max_input: int
     turn_count: int
+    all_input: int = 0
+    all_output: int = 0
 
 
 class GlobalTokenStatsResponse(BaseModel):
@@ -30,11 +32,15 @@ class GlobalTokenStatsResponse(BaseModel):
     total_tokens: int
     max_input: int
     agent_count: int
+    total_all_input: int = 0
+    total_all_output: int = 0
 
 
 class TurnRecord(BaseModel):
     input_estimated: int
     output_actual: int
+    all_input: int = 0
+    all_output: int = 0
     input_text: str
     output_text: str
     graph_messages: list[dict] = []

@@ -239,13 +239,24 @@ export default function AgentDetailPage() {
                             </button>
                           )}
                         </div>
-                        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--color-text-muted)" }}>
-                          <span title="Estimated input tokens">
+                        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--color-text-muted)", flexWrap: "wrap", alignItems: "center" }}>
+                          <span title="User-facing input (your message)">
                             In: {formatTokens(turn.input_estimated)}
                           </span>
-                          <span title="Actual output tokens">
+                          <span title="User-facing output (final reply)">
                             Out: {formatTokens(turn.output_actual)}
                           </span>
+                          {(turn.all_input > 0 || turn.all_output > 0) && (
+                            <span
+                              title="Total tokens across all graph steps"
+                              style={{
+                                color: "var(--color-primary)",
+                                fontWeight: 600,
+                              }}
+                            >
+                              All: {formatTokens(turn.all_input + turn.all_output)}
+                            </span>
+                          )}
                           <span>{timeAgo(turn.timestamp)}</span>
                         </div>
                       </div>

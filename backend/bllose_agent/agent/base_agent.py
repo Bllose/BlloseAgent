@@ -31,7 +31,7 @@ class BaseAgent(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Unique agent name (e.g. 'bllose', 'Coding Leader')."""
+        """Unique agent name (e.g. 'bllose', 'coding_leader')."""
         ...
 
     @property

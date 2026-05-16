@@ -25,7 +25,7 @@ function HomePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>("chat");
-  const [totalTokens, setTotalTokens] = useState<number | null>(null);
+  const [allTotal, setAllTotal] = useState<number | null>(null);
 
   // Sync tab from URL (handles back-navigation from agent detail)
   useEffect(() => {
@@ -44,7 +44,9 @@ function HomePageInner() {
     async function fetchTokens() {
       try {
         const stats = await getTokenStats();
-        if (!cancelled) setTotalTokens(stats.total_tokens);
+        if (!cancelled) {
+          setAllTotal(stats.total_all_input + stats.total_all_output);
+        }
       } catch {
         // token stats not critical
       }
@@ -108,7 +110,7 @@ function HomePageInner() {
           >
             BlloseAgent
           </span>
-          {totalTokens !== null && totalTokens > 0 && (
+          {allTotal !== null && allTotal > 0 && (
             <span
               style={{
                 fontSize: 11,
@@ -120,7 +122,7 @@ function HomePageInner() {
                 border: "1px solid var(--color-border)",
               }}
             >
-              {formatTokens(totalTokens)} tokens
+              {formatTokens(allTotal)} tokens
             </span>
           )}
         </div>

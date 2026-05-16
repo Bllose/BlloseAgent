@@ -137,7 +137,7 @@ export function StatusPanel() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
           gap: 16,
         }}
       >
@@ -230,6 +230,11 @@ export function StatusPanel() {
                     borderLeft
                   />
                   <StatCell
+                    label="All"
+                    value={formatTokens(tokens.all_input + tokens.all_output)}
+                    borderLeft
+                  />
+                  <StatCell
                     label="Max In"
                     value={formatTokens(tokens.max_input)}
                     borderLeft
@@ -300,23 +305,31 @@ function StatCell({
     <div
       style={{
         flex: 1,
-        padding: "10px 14px",
+        padding: "8px 6px",
         background: "var(--color-bg)",
         textAlign: "center",
         borderLeft: borderLeft ? "1px solid var(--color-border-light)" : "none",
+        minWidth: 0,
       }}
     >
       <div
         style={{
           fontSize: 10,
           color: "var(--color-text-muted)",
-          marginBottom: 3,
+          marginBottom: 2,
           fontWeight: 500,
         }}
       >
         {label}
       </div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text)" }}>
+      <div style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: "var(--color-text)",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      }}>
         {value}
       </div>
     </div>

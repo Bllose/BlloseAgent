@@ -104,10 +104,19 @@ def serialize_messages(messages: list) -> list[dict]:
 
 @dataclass
 class TurnUsage:
-    """A single conversation turn's token usage with content snapshots."""
+    """A single conversation turn's token usage with content snapshots.
+
+    User-facing counts (the message the user sent / the final reply):
+      input_estimated, output_actual
+
+    All-in / all-out counts (includes every LLM call in the ReAct loop):
+      all_input, all_output
+    """
 
     input_estimated: int
     output_actual: int
+    all_input: int = 0
+    all_output: int = 0
     input_text: str = ""
     output_text: str = ""
     graph_messages: list[dict] = field(default_factory=list)
@@ -117,6 +126,8 @@ class TurnUsage:
         return {
             "input_estimated": self.input_estimated,
             "output_actual": self.output_actual,
+            "all_input": self.all_input,
+            "all_output": self.all_output,
             "input_text": self.input_text,
             "output_text": self.output_text,
             "graph_messages": self.graph_messages,
@@ -126,7 +137,12 @@ class TurnUsage:
 
 @dataclass
 class AgentTokenStats:
-    """Snapshot of an agent's token usage (serialisable for API)."""
+    """Snapshot of an agent's token usage (serialisable for API).
+
+    User-facing: total_input, total_output, total_tokens
+    All-in/all-out: total_all_input, total_all_output (includes every
+    LLM call inside the LangGraph ReAct loop).
+    """
 
     agent_name: str
     total_input: int
@@ -134,6 +150,8 @@ class AgentTokenStats:
     total_tokens: int
     max_input: int
     turn_count: int
+    total_all_input: int = 0
+    total_all_output: int = 0
 
 
 # ── per-agent tracker ───────────────────────────────────────────
@@ -156,6 +174,8 @@ class AgentTokenTracker:
         self,
         input_estimated: int,
         output_actual: int,
+        all_input: int = 0,
+        all_output: int = 0,
         input_text: str = "",
         output_text: str = "",
         graph_messages: list[dict] | None = None,
@@ -164,6 +184,8 @@ class AgentTokenTracker:
         self._turns.append(TurnUsage(
             input_estimated=input_estimated,
             output_actual=output_actual,
+            all_input=all_input,
+            all_output=all_output,
             input_text=input_text,
             output_text=output_text,
             graph_messages=graph_messages or [],
@@ -178,6 +200,8 @@ class AgentTokenTracker:
     def stats(self) -> AgentTokenStats:
         total_in = sum(t.input_estimated for t in self._turns)
         total_out = sum(t.output_actual for t in self._turns)
+        all_in = sum(t.all_input for t in self._turns)
+        all_out = sum(t.all_output for t in self._turns)
         max_in = max((t.input_estimated for t in self._turns), default=0)
         return AgentTokenStats(
             agent_name=self.agent_name,
@@ -186,6 +210,8 @@ class AgentTokenTracker:
             total_tokens=total_in + total_out,
             max_input=max_in,
             turn_count=len(self._turns),
+            total_all_input=all_in,
+            total_all_output=all_out,
         )
 
     @property
@@ -224,6 +250,14 @@ class GlobalTokenTracker:
     @property
     def total_tokens(self) -> int:
         return self.total_input + self.total_output
+
+    @property
+    def total_all_input(self) -> int:
+        return sum(s.total_all_input for s in self.all_stats)
+
+    @property
+    def total_all_output(self) -> int:
+        return sum(s.total_all_output for s in self.all_stats)
 
     @property
     def max_input(self) -> int:

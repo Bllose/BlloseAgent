@@ -32,6 +32,8 @@ export interface TokenStats {
   total_tokens: number;
   max_input: number;
   turn_count: number;
+  all_input: number;
+  all_output: number;
 }
 
 export interface GlobalTokenStats {
@@ -41,6 +43,8 @@ export interface GlobalTokenStats {
   total_tokens: number;
   max_input: number;
   agent_count: number;
+  total_all_input: number;
+  total_all_output: number;
 }
 
 export interface GraphMessage {
@@ -56,6 +60,8 @@ export interface GraphMessage {
 export interface TurnRecord {
   input_estimated: number;
   output_actual: number;
+  all_input: number;
+  all_output: number;
   input_text: string;
   output_text: string;
   graph_messages: GraphMessage[];

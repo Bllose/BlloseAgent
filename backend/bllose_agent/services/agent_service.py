@@ -59,7 +59,9 @@ class AgentService:
 
         bllose.set_status("working")
 
-        output_tokens = 0
+        output_actual = 0
+        all_input = 0
+        all_output = 0
         output_text = ""
         graph_snapshot: list[dict] = []
 
@@ -86,9 +88,12 @@ class AgentService:
             elif kind == "on_chat_model_end":
                 output = event["data"].get("output")
                 if hasattr(output, "usage_metadata"):
-                    output_tokens += output.usage_metadata.get(
-                        "output_tokens", 0
-                    )
+                    um = output.usage_metadata
+                    # User-facing: keep the last response's output tokens
+                    output_actual = um.get("output_tokens", 0)
+                    # All-in/all-out: accumulate every LLM call
+                    all_input += um.get("input_tokens", 0)
+                    all_output += um.get("output_tokens", 0)
                 # Capture the full AI message
                 if output is not None:
                     graph_snapshot.append(serialize_message(output))
@@ -115,7 +120,10 @@ class AgentService:
 
         # Record this turn's token usage
         tracker.record(
-            input_est, output_tokens,
+            input_est,
+            output_actual,
+            all_input=all_input,
+            all_output=all_output,
             input_text=message,
             output_text=output_text,
             graph_messages=graph_snapshot,
