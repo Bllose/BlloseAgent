@@ -1,9 +1,10 @@
 import json
 from collections.abc import AsyncIterator
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 
 from bllose_agent.services.team_manager import BUS, get_self_agent
+from bllose_agent.services.token_tracker import serialize_message
 
 
 def _classify(content) -> tuple[str, str] | None:
@@ -60,6 +61,11 @@ class AgentService:
 
         output_tokens = 0
         output_text = ""
+        graph_snapshot: list[dict] = []
+
+        # Record the initial user message in the graph snapshot
+        for m in messages:
+            graph_snapshot.append(serialize_message(m))
 
         inputs = {"messages": messages}
         async for event in bllose.graph.astream_events(
@@ -83,6 +89,9 @@ class AgentService:
                     output_tokens += output.usage_metadata.get(
                         "output_tokens", 0
                     )
+                # Capture the full AI message
+                if output is not None:
+                    graph_snapshot.append(serialize_message(output))
 
             elif kind == "on_tool_start":
                 yield {
@@ -96,12 +105,20 @@ class AgentService:
                     "name": event["name"],
                     "output": str(event["data"].get("output", "")),
                 }
+                # Reconstruct a ToolMessage for the graph snapshot
+                tool_msg = ToolMessage(
+                    content=str(event["data"].get("output", "")),
+                    name=event["name"],
+                    tool_call_id="",
+                )
+                graph_snapshot.append(serialize_message(tool_msg))
 
         # Record this turn's token usage
         tracker.record(
             input_est, output_tokens,
             input_text=message,
             output_text=output_text,
+            graph_messages=graph_snapshot,
         )
 
         bllose.set_status("idle")

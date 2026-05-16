@@ -1,7 +1,7 @@
 """Token usage tracking — per-agent and global statistics.
 
 AgentTokenTracker: one per agent, tracks every turn's token usage
-plus the input/output content for later review.
+plus the input/output content and full graph message snapshots.
 GlobalTokenTracker: owned by SelfAgent, aggregates across all agents.
 """
 
@@ -51,6 +51,54 @@ def estimate_input_tokens(messages: list) -> int:
     return total
 
 
+# ── message serialization ───────────────────────────────────────
+
+def serialize_message(msg) -> dict:
+    """Convert a LangChain message to a JSON-safe dict snapshot."""
+    d: dict = {"type": getattr(msg, "type", "unknown")}
+
+    content = getattr(msg, "content", "")
+    if isinstance(content, str):
+        d["content"] = content
+    elif isinstance(content, list):
+        d["content_blocks"] = []
+        for block in content:
+            if isinstance(block, dict):
+                d["content_blocks"].append(block)
+    else:
+        d["content"] = str(content)
+
+    # Tool calls (AIMessage)
+    tc = getattr(msg, "tool_calls", None)
+    if tc:
+        d["tool_calls"] = []
+        for c in tc:
+            if isinstance(c, dict):
+                d["tool_calls"].append({
+                    "name": c.get("name", ""),
+                    "args": c.get("args", {}),
+                    "id": c.get("id", ""),
+                })
+
+    # Tool message fields
+    if hasattr(msg, "name"):
+        d["name"] = msg.name
+    if hasattr(msg, "tool_call_id"):
+        d["tool_call_id"] = msg.tool_call_id
+
+    # Usage metadata (AIMessage)
+    um = getattr(msg, "usage_metadata", None)
+    if um:
+        d["usage_metadata"] = dict(um)
+
+    return d
+
+
+def serialize_messages(messages: list) -> list[dict]:
+    """Convert a list of LangChain messages to JSON-safe dicts."""
+    return [serialize_message(m) for m in messages]
+
+
 # ── data types ──────────────────────────────────────────────────
 
 
@@ -62,6 +110,7 @@ class TurnUsage:
     output_actual: int
     input_text: str = ""
     output_text: str = ""
+    graph_messages: list[dict] = field(default_factory=list)
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict:
@@ -70,6 +119,7 @@ class TurnUsage:
             "output_actual": self.output_actual,
             "input_text": self.input_text,
             "output_text": self.output_text,
+            "graph_messages": self.graph_messages,
             "timestamp": self.timestamp,
         }
 
@@ -108,13 +158,15 @@ class AgentTokenTracker:
         output_actual: int,
         input_text: str = "",
         output_text: str = "",
+        graph_messages: list[dict] | None = None,
     ) -> None:
-        """Record one conversation turn with content snapshots."""
+        """Record one conversation turn with content snapshots and graph trace."""
         self._turns.append(TurnUsage(
             input_estimated=input_estimated,
             output_actual=output_actual,
             input_text=input_text,
             output_text=output_text,
+            graph_messages=graph_messages or [],
         ))
 
     @property

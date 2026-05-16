@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAgentHistory } from "@/lib/api";
-import type { AgentHistory } from "@/types";
+import type { AgentHistory, GraphMessage } from "@/types";
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -19,6 +19,13 @@ function timeAgo(ts: number): string {
   return `${Math.floor(sec / 86400)}d ago`;
 }
 
+const MSG_TYPE_COLORS: Record<string, string> = {
+  human: "#3b82f6",
+  ai: "#8b5cf6",
+  tool: "#22c55e",
+  system: "#f59e0b",
+};
+
 export default function AgentDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -27,6 +34,7 @@ export default function AgentDetailPage() {
   const [history, setHistory] = useState<AgentHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedTurn, setExpandedTurn] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,120 +175,324 @@ export default function AgentDetailPage() {
                 >
                   Conversation History
                 </h3>
-                {history.turns.map((turn, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: "var(--color-surface)",
-                      borderRadius: "var(--radius)",
-                      padding: "20px 24px",
-                      border: "1px solid var(--color-border-light)",
-                    }}
-                  >
-                    {/* Turn header */}
+                {history.turns.map((turn, i) => {
+                  const expanded = expandedTurn === i;
+                  return (
                     <div
+                      key={i}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 14,
+                        background: "var(--color-surface)",
+                        borderRadius: "var(--radius)",
+                        padding: "20px 24px",
+                        border: "1px solid var(--color-border-light)",
                       }}
                     >
-                      <span
+                      {/* Turn header */}
+                      <div
                         style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "var(--color-primary)",
-                          background: "var(--color-primary-bg)",
-                          padding: "3px 12px",
-                          borderRadius: 100,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: 14,
+                          flexWrap: "wrap",
+                          gap: 8,
                         }}
                       >
-                        Turn {i + 1}
-                      </span>
-                      <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--color-text-muted)" }}>
-                        <span title="Estimated input tokens">
-                          In: {formatTokens(turn.input_estimated)}
-                        </span>
-                        <span title="Actual output tokens">
-                          Out: {formatTokens(turn.output_actual)}
-                        </span>
-                        <span>{timeAgo(turn.timestamp)}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "var(--color-primary)",
+                              background: "var(--color-primary-bg)",
+                              padding: "3px 12px",
+                              borderRadius: 100,
+                            }}
+                          >
+                            Turn {i + 1}
+                          </span>
+                          {turn.graph_messages.length > 0 && (
+                            <button
+                              onClick={() =>
+                                setExpandedTurn(expanded ? null : i)
+                              }
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: expanded
+                                  ? "var(--color-primary-hover)"
+                                  : "var(--color-text-secondary)",
+                                background: expanded
+                                  ? "var(--color-primary-bg)"
+                                  : "var(--color-bg)",
+                                border: "1px solid var(--color-border)",
+                                borderRadius: "var(--radius-sm)",
+                                padding: "3px 12px",
+                                cursor: "pointer",
+                                fontFamily: "inherit",
+                                transition: "all var(--transition)",
+                              }}
+                            >
+                              {expanded
+                                ? "Hide Trace"
+                                : `Trace (${turn.graph_messages.length} msgs)`}
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--color-text-muted)" }}>
+                          <span title="Estimated input tokens">
+                            In: {formatTokens(turn.input_estimated)}
+                          </span>
+                          <span title="Actual output tokens">
+                            Out: {formatTokens(turn.output_actual)}
+                          </span>
+                          <span>{timeAgo(turn.timestamp)}</span>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Input */}
-                    <div style={{ marginBottom: 12 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.06em",
-                          color: "var(--color-text-muted)",
-                          marginBottom: 6,
-                        }}
-                      >
-                        Input
+                      {/* Input */}
+                      <div style={{ marginBottom: 12 }}>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            color: "var(--color-text-muted)",
+                            marginBottom: 6,
+                          }}
+                        >
+                          Input
+                        </div>
+                        <div
+                          style={{
+                            padding: "10px 14px",
+                            background: "var(--color-bg)",
+                            borderRadius: "var(--radius-sm)",
+                            border: "1px solid var(--color-border-light)",
+                            fontSize: 13,
+                            lineHeight: 1.6,
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            color: "var(--color-text)",
+                            maxHeight: 200,
+                            overflowY: "auto",
+                          }}
+                        >
+                          {turn.input_text || "(empty)"}
+                        </div>
                       </div>
-                      <div
-                        style={{
-                          padding: "10px 14px",
-                          background: "var(--color-bg)",
-                          borderRadius: "var(--radius-sm)",
-                          border: "1px solid var(--color-border-light)",
-                          fontSize: 13,
-                          lineHeight: 1.6,
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          color: "var(--color-text)",
-                          maxHeight: 200,
-                          overflowY: "auto",
-                        }}
-                      >
-                        {turn.input_text || "(empty)"}
-                      </div>
-                    </div>
 
-                    {/* Output */}
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.06em",
-                          color: "var(--color-text-muted)",
-                          marginBottom: 6,
-                        }}
-                      >
-                        Output
+                      {/* Output */}
+                      <div style={{ marginBottom: expanded ? 14 : 0 }}>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            color: "var(--color-text-muted)",
+                            marginBottom: 6,
+                          }}
+                        >
+                          Output
+                        </div>
+                        <div
+                          style={{
+                            padding: "10px 14px",
+                            background: "var(--color-primary-bg)",
+                            borderRadius: "var(--radius-sm)",
+                            border: "1px solid #ede9fe",
+                            fontSize: 13,
+                            lineHeight: 1.6,
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            color: "var(--color-text)",
+                            maxHeight: 300,
+                            overflowY: "auto",
+                          }}
+                        >
+                          {turn.output_text || "(empty)"}
+                        </div>
                       </div>
-                      <div
-                        style={{
-                          padding: "10px 14px",
-                          background: "var(--color-primary-bg)",
-                          borderRadius: "var(--radius-sm)",
-                          border: "1px solid #ede9fe",
-                          fontSize: 13,
-                          lineHeight: 1.6,
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          color: "var(--color-text)",
-                          maxHeight: 300,
-                          overflowY: "auto",
-                        }}
-                      >
-                        {turn.output_text || "(empty)"}
-                      </div>
+
+                      {/* Graph trace (expandable) */}
+                      {expanded && (
+                        <div
+                          style={{
+                            borderTop: "1px solid var(--color-border-light)",
+                            paddingTop: 14,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.06em",
+                              color: "var(--color-text-muted)",
+                              marginBottom: 10,
+                            }}
+                          >
+                            Graph Messages ({turn.graph_messages.length})
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8,
+                            }}
+                          >
+                            {turn.graph_messages.map((msg, mi) => (
+                              <GraphMessageRow key={mi} msg={msg} index={mi} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function GraphMessageRow({
+  msg,
+  index,
+}: {
+  msg: GraphMessage;
+  index: number;
+}) {
+  const typeColor = MSG_TYPE_COLORS[msg.type] || "#9ca3af";
+  const content =
+    msg.content ||
+    (msg.content_blocks
+      ? JSON.stringify(msg.content_blocks, null, 2)
+      : "");
+
+  return (
+    <div
+      style={{
+        background: "var(--color-bg)",
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--color-border-light)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Row header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 14px",
+          borderBottom: "1px solid var(--color-border-light)",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: typeColor,
+            background: `${typeColor}18`,
+            padding: "2px 8px",
+            borderRadius: 4,
+            textTransform: "uppercase",
+          }}
+        >
+          {msg.type}
+        </span>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: "var(--color-text-secondary)",
+          }}
+        >
+          #{index + 1}
+        </span>
+        {msg.name && (
+          <span
+            style={{
+              fontSize: 10,
+              color: "var(--color-text-muted)",
+              fontFamily: "var(--font-mono)",
+            }}
+          >
+            {msg.name}
+          </span>
+        )}
+        {msg.usage_metadata && (
+          <span style={{ fontSize: 10, color: "var(--color-text-muted)", marginLeft: "auto" }}>
+            Tokens:{" "}
+            {String(msg.usage_metadata.input_tokens ?? "?")}/
+            {String(msg.usage_metadata.output_tokens ?? "?")}
+          </span>
+        )}
+      </div>
+
+      {/* Tool calls (AI messages) */}
+      {msg.tool_calls && msg.tool_calls.length > 0 && (
+        <div
+          style={{
+            padding: "8px 14px",
+            borderBottom: "1px solid var(--color-border-light)",
+            background: "#fafafe",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: "var(--color-text-muted)",
+              marginBottom: 6,
+            }}
+          >
+            TOOL CALLS
+          </div>
+          {msg.tool_calls.map((tc, tci) => (
+            <div
+              key={tci}
+              style={{
+                fontSize: 12,
+                fontFamily: "var(--font-mono)",
+                color: "var(--color-text-secondary)",
+                marginBottom: 4,
+              }}
+            >
+              <span style={{ fontWeight: 600, color: "var(--color-primary)" }}>
+                {tc.name}
+              </span>
+              ({JSON.stringify(tc.args)})
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Content */}
+      {content && (
+        <div
+          style={{
+            padding: "10px 14px",
+            fontSize: 12,
+            lineHeight: 1.6,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            color: "var(--color-text)",
+            fontFamily:
+              msg.type === "tool" ? "var(--font-mono)" : "inherit",
+            maxHeight: 300,
+            overflowY: "auto",
+          }}
+        >
+          {content}
+        </div>
+      )}
     </div>
   );
 }

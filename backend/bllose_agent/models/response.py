@@ -37,6 +37,7 @@ class TurnRecord(BaseModel):
     output_actual: int
     input_text: str
     output_text: str
+    graph_messages: list[dict] = []
     timestamp: float
 
 

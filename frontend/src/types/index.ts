@@ -43,11 +43,22 @@ export interface GlobalTokenStats {
   agent_count: number;
 }
 
+export interface GraphMessage {
+  type: string;
+  content?: string;
+  content_blocks?: Record<string, unknown>[];
+  name?: string;
+  tool_call_id?: string;
+  tool_calls?: { name: string; args: Record<string, unknown>; id: string }[];
+  usage_metadata?: Record<string, unknown>;
+}
+
 export interface TurnRecord {
   input_estimated: number;
   output_actual: number;
   input_text: string;
   output_text: string;
+  graph_messages: GraphMessage[];
   timestamp: number;
 }
 

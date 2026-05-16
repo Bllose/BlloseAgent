@@ -471,7 +471,8 @@ class TeammateAgent(BaseAgent):
 
                         inputs = {"messages": messages}
                         result = await graph.ainvoke(inputs)
-                        last_msg = result["messages"][-1]
+                        all_msgs = result["messages"]
+                        last_msg = all_msgs[-1]
 
                         # Extract actual output tokens from response metadata
                         output_tokens = 0
@@ -484,10 +485,14 @@ class TeammateAgent(BaseAgent):
                             if hasattr(last_msg, "content")
                             else str(last_msg)
                         )
+                        # Full graph message snapshot
+                        from bllose_agent.services.token_tracker import serialize_messages
+                        graph_snapshot = serialize_messages(all_msgs)
                         tracker.record(
                             input_est, output_tokens,
                             input_text=content,
                             output_text=reply,
+                            graph_messages=graph_snapshot,
                         )
                         self._bus.send(self._name, sender, reply, "status_report")
                         self._bus.send(
