@@ -1,6 +1,7 @@
 """Token usage tracking — per-agent and global statistics.
 
-AgentTokenTracker: one per agent, tracks every turn's token usage.
+AgentTokenTracker: one per agent, tracks every turn's token usage
+plus the input/output content for later review.
 GlobalTokenTracker: owned by SelfAgent, aggregates across all agents.
 """
 
@@ -23,7 +24,7 @@ def _get_encoder() -> tiktoken.Encoding | None:
         try:
             _encoder = tiktoken.get_encoding("cl100k_base")
         except Exception:
-            _encoder = None  # stays None — fall back to char heuristic
+            _encoder = None
     return _encoder
 
 
@@ -55,11 +56,22 @@ def estimate_input_tokens(messages: list) -> int:
 
 @dataclass
 class TurnUsage:
-    """A single conversation turn's token usage."""
+    """A single conversation turn's token usage with content snapshots."""
 
     input_estimated: int
     output_actual: int
+    input_text: str = ""
+    output_text: str = ""
     timestamp: float = field(default_factory=time.time)
+
+    def to_dict(self) -> dict:
+        return {
+            "input_estimated": self.input_estimated,
+            "output_actual": self.output_actual,
+            "input_text": self.input_text,
+            "output_text": self.output_text,
+            "timestamp": self.timestamp,
+        }
 
 
 @dataclass
@@ -90,12 +102,25 @@ class AgentTokenTracker:
         """Estimate input tokens for a list of messages (pre-call)."""
         return estimate_input_tokens(messages)
 
-    def record(self, input_estimated: int, output_actual: int) -> None:
-        """Record one conversation turn."""
+    def record(
+        self,
+        input_estimated: int,
+        output_actual: int,
+        input_text: str = "",
+        output_text: str = "",
+    ) -> None:
+        """Record one conversation turn with content snapshots."""
         self._turns.append(TurnUsage(
             input_estimated=input_estimated,
             output_actual=output_actual,
+            input_text=input_text,
+            output_text=output_text,
         ))
+
+    @property
+    def turns(self) -> list[dict]:
+        """Return all recorded turns as dictionaries (for API)."""
+        return [t.to_dict() for t in self._turns]
 
     @property
     def stats(self) -> AgentTokenStats:

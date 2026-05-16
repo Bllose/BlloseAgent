@@ -30,3 +30,21 @@ class GlobalTokenStatsResponse(BaseModel):
     total_tokens: int
     max_input: int
     agent_count: int
+
+
+class TurnRecord(BaseModel):
+    input_estimated: int
+    output_actual: int
+    input_text: str
+    output_text: str
+    timestamp: float
+
+
+class AgentHistoryResponse(BaseModel):
+    agent_name: str
+    total_input: int
+    total_output: int
+    total_tokens: int
+    max_input: int
+    turn_count: int
+    turns: list[TurnRecord]

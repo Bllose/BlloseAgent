@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AgentStatus, TokenStats } from "@/types";
 import { getAgentStatuses, getTokenStats } from "@/lib/api";
 
@@ -34,6 +35,7 @@ function formatTokens(n: number): string {
 }
 
 export function StatusPanel() {
+  const router = useRouter();
   const [agents, setAgents] = useState<AgentStatus[]>([]);
   const [tokenMap, setTokenMap] = useState<Record<string, TokenStats>>({});
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +148,7 @@ export function StatusPanel() {
           return (
             <div
               key={a.name}
+              onClick={() => router.push(`/agent/${encodeURIComponent(a.name)}`)}
               style={{
                 background: "var(--color-surface)",
                 borderRadius: "var(--radius)",
@@ -154,7 +157,16 @@ export function StatusPanel() {
                 display: "flex",
                 flexDirection: "column",
                 gap: 12,
-                transition: "box-shadow var(--transition)",
+                cursor: "pointer",
+                transition: "box-shadow var(--transition), border-color var(--transition)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+                e.currentTarget.style.boxShadow = "var(--shadow)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border-light)";
+                e.currentTarget.style.boxShadow = "none";
               }}
             >
               {/* Name + status */}

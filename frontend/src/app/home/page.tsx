@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { StatusPanel } from "@/components/status/StatusPanel";
@@ -20,11 +20,18 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
-export default function HomePage() {
+function HomePageInner() {
   const { isLoggedIn, email, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>("chat");
   const [totalTokens, setTotalTokens] = useState<number | null>(null);
+
+  // Sync tab from URL (handles back-navigation from agent detail)
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t === "status") setActiveTab("status");
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -245,5 +252,29 @@ export default function HomePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            height: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "var(--color-bg)",
+            color: "var(--color-text-muted)",
+            fontSize: 14,
+          }}
+        >
+          Loading...
+        </div>
+      }
+    >
+      <HomePageInner />
+    </Suspense>
   );
 }

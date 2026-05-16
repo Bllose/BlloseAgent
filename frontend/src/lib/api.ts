@@ -1,4 +1,4 @@
-import type { AgentStatus, GlobalTokenStats } from "@/types";
+import type { AgentStatus, AgentHistory, GlobalTokenStats } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -75,6 +75,14 @@ export async function getAgentStatuses(): Promise<AgentStatus[]> {
 
 export async function getTokenStats(): Promise<GlobalTokenStats> {
   const res = await fetch(`${API_URL}/api/agent/tokens`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getAgentHistory(
+  name: string,
+): Promise<AgentHistory> {
+  const res = await fetch(`${API_URL}/api/agent/history/${encodeURIComponent(name)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

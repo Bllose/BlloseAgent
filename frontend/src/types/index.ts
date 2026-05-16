@@ -42,3 +42,21 @@ export interface GlobalTokenStats {
   max_input: number;
   agent_count: number;
 }
+
+export interface TurnRecord {
+  input_estimated: number;
+  output_actual: number;
+  input_text: string;
+  output_text: string;
+  timestamp: number;
+}
+
+export interface AgentHistory {
+  agent_name: string;
+  total_input: number;
+  total_output: number;
+  total_tokens: number;
+  max_input: number;
+  turn_count: number;
+  turns: TurnRecord[];
+}

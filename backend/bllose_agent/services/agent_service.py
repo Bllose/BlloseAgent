@@ -59,6 +59,7 @@ class AgentService:
         bllose.set_status("working")
 
         output_tokens = 0
+        output_text = ""
 
         inputs = {"messages": messages}
         async for event in bllose.graph.astream_events(
@@ -73,6 +74,8 @@ class AgentService:
                     result = _classify(chunk.content)
                     if result is not None:
                         yield {"type": result[0], "content": result[1]}
+                        if result[0] == "text":
+                            output_text += result[1]
 
             elif kind == "on_chat_model_end":
                 output = event["data"].get("output")
@@ -95,6 +98,10 @@ class AgentService:
                 }
 
         # Record this turn's token usage
-        tracker.record(input_est, output_tokens)
+        tracker.record(
+            input_est, output_tokens,
+            input_text=message,
+            output_text=output_text,
+        )
 
         bllose.set_status("idle")

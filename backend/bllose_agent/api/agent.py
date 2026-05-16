@@ -1,10 +1,12 @@
 from fastapi import APIRouter
 
 from bllose_agent.models.response import (
+    AgentHistoryResponse,
     AgentInfoResponse,
     AgentStatusResponse,
     TokenStatsResponse,
     GlobalTokenStatsResponse,
+    TurnRecord,
 )
 from bllose_agent.config.settings import settings
 from bllose_agent.services.team_manager import get_self_agent
@@ -71,4 +73,21 @@ async def get_token_stats():
         total_tokens=tt.total_tokens,
         max_input=tt.max_input,
         agent_count=tt.agent_count,
+    )
+
+
+@router.get("/history/{name}", response_model=AgentHistoryResponse)
+async def get_agent_history(name: str):
+    """Return full conversation-turn history for a single agent."""
+    sa = get_self_agent()
+    tracker = sa.token_tracker.agent(name)
+    s = tracker.stats
+    return AgentHistoryResponse(
+        agent_name=s.agent_name,
+        total_input=s.total_input,
+        total_output=s.total_output,
+        total_tokens=s.total_tokens,
+        max_input=s.max_input,
+        turn_count=s.turn_count,
+        turns=[TurnRecord(**t) for t in tracker.turns],
     )

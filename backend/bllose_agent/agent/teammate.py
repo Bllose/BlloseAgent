@@ -479,12 +479,15 @@ class TeammateAgent(BaseAgent):
                             output_tokens = last_msg.usage_metadata.get(
                                 "output_tokens", 0
                             )
-                        tracker.record(input_est, output_tokens)
-
                         reply = (
                             str(last_msg.content)
                             if hasattr(last_msg, "content")
                             else str(last_msg)
+                        )
+                        tracker.record(
+                            input_est, output_tokens,
+                            input_text=content,
+                            output_text=reply,
                         )
                         self._bus.send(self._name, sender, reply, "status_report")
                         self._bus.send(
