@@ -1,4 +1,4 @@
-import type { AgentStatus, AgentHistory, GlobalTokenStats } from "@/types";
+import type { AgentStatus, AgentHistory, AgentInfo, GlobalTokenStats } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -69,6 +69,12 @@ export async function postChatStream(
 
 export async function getAgentStatuses(): Promise<AgentStatus[]> {
   const res = await fetch(`${API_URL}/api/agent/status`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getAgentInfo(): Promise<AgentInfo> {
+  const res = await fetch(`${API_URL}/api/agent/info`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

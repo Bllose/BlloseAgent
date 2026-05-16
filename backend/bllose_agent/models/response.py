@@ -5,6 +5,7 @@ class AgentInfoResponse(BaseModel):
     name: str
     version: str
     model: str
+    workplace: str = ""
 
 
 class AgentStatusResponse(BaseModel):

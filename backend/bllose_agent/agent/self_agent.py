@@ -64,7 +64,7 @@ class SelfAgent:
 
         # 0. Clear leftover inbox messages from previous sessions
         #    (prevents stale shutdown_request from killing agents at birth)
-        for inbox_name in ["self_agent", "bllose", "coding_leader", "paper_leader"]:
+        for inbox_name in ["self_agent", "bllose", "coding_leader", "testing_leader", "paper_leader"]:
             self.bus.read_inbox(inbox_name)
         lines.append("inboxes cleared")
 
@@ -86,6 +86,7 @@ class SelfAgent:
 
         for name, role in [
             ("coding_leader", "coding_leader"),
+            ("testing_leader", "testing_leader"),
             ("paper_leader", "paper_leader"),
         ]:
             agent = TeammateAgent(name, role, self.bus, self.team)
@@ -181,6 +182,10 @@ class SelfAgent:
             "coding_leader": [
                 "coding leader", "code agent", "coding_leader",
                 "codingleader", "code leader",
+            ],
+            "testing_leader": [
+                "testing leader", "testing_leader", "testingleader",
+                "test leader", "qa leader",
             ],
             "paper_leader": [
                 "paper leader", "paper_leader", "paperleader",

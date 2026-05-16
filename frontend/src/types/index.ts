@@ -1,3 +1,10 @@
+export interface AgentInfo {
+  name: string;
+  version: string;
+  model: string;
+  workplace: string;
+}
+
 export interface User {
   email: string;
   password: string;

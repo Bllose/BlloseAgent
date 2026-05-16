@@ -1,3 +1,4 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import OpenAIEmbeddings
@@ -24,6 +25,9 @@ class Settings(BaseSettings):
     embedding_llm_api_key: str = ""
     embedding_llm_base_url: str = ""
 
+    # ---- Agent workplace ----
+    workplace: str = ""
+
     # ---- Server ----
     host: str = "0.0.0.0"
     port: int = 8000
@@ -33,6 +37,16 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     # ── helpers ──────────────────────────────────────────────
+
+    def get_workplace(self) -> Path:
+        """Agent workplace root for file read/write/exec operations.
+
+        Returns the configured workplace path, or the user's home directory
+        when workplace is empty / not set.
+        """
+        if self.workplace:
+            return Path(self.workplace).expanduser().resolve()
+        return Path.home()
 
     def _resolve(self, model: str, api_key: str, base_url: str) -> tuple[str, str, str]:
         """未配置的值退回基础 LLM 对应字段"""

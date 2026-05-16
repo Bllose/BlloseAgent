@@ -4,15 +4,19 @@ from pathlib import Path
 
 from langchain_core.tools import tool
 
+from bllose_agent.config.settings import settings
 from bllose_agent.services.team_manager import BUS, TEAM, VALID_MSG_TYPES
 
-WORKDIR = Path(__file__).resolve().parent.parent.parent  # backend/
+
+def _get_workplace() -> Path:
+    return settings.get_workplace()
 
 
 def _safe_path(p: str) -> Path:
-    path = (WORKDIR / p).resolve()
-    if not path.is_relative_to(WORKDIR):
-        raise ValueError(f"Path escapes workspace: {p}")
+    root = _get_workplace()
+    path = (root / p).resolve()
+    if not path.is_relative_to(root):
+        raise ValueError(f"Path escapes workplace: {p}")
     return path
 
 
@@ -27,7 +31,7 @@ def bash(command: str) -> str:
         return "Error: Dangerous command blocked"
     try:
         r = subprocess.run(
-            command, shell=True, cwd=WORKDIR,
+            command, shell=True, cwd=_get_workplace(),
             capture_output=True, text=True, timeout=120,
         )
         out = (r.stdout + r.stderr).strip()

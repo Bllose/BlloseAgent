@@ -27,14 +27,16 @@ from bllose_agent.agent.state import AgentState
 from bllose_agent.config.settings import settings
 from bllose_agent.services.team_manager import BUS, TEAM, VALID_MSG_TYPES, MessageBus, TeammateManager, get_self_agent
 
-WORKDIR = Path(__file__).resolve().parent.parent.parent  # backend/
-
 # ── Safe path helper ────────────────────────────────────────────
 
+def _get_workplace() -> Path:
+    return settings.get_workplace()
+
 def _safe_path(p: str) -> Path:
-    path = (WORKDIR / p).resolve()
-    if not path.is_relative_to(WORKDIR):
-        raise ValueError(f"Path escapes workspace: {p}")
+    root = _get_workplace()
+    path = (root / p).resolve()
+    if not path.is_relative_to(root):
+        raise ValueError(f"Path escapes workplace: {p}")
     return path
 
 
@@ -50,6 +52,7 @@ Your responsibilities:
 
 Available expert agents on your team:
 - **Coding Leader** (coding_leader): directs code development, debugging, refactoring.
+- **Testing Leader** (testing_leader): comprehensive testing and QA after Coding Leader finishes. Works closely with Coding Leader as a classmate.
 - **Paper Leader** (paper_leader): interprets papers, summarizes research, answers academic questions.
 
 The project is managed by **self_agent** — it handles spawning experts and tracking status. You don't spawn experts directly; instead call **request_expert** to ask self_agent to do it.
@@ -57,6 +60,7 @@ The project is managed by **self_agent** — it handles spawning experts and tra
 Guidelines:
 - For casual chat, questions, or simple file operations — handle them yourself.
 - For complex coding tasks — use request_expert to ask for Coding Leader.
+- After Coding Leader completes work, use request_expert to ask for Testing Leader to verify the results.
 - For paper interpretation or research questions — use request_expert to ask for Paper Leader.
 - After calling request_expert, check your inbox ONCE with read_inbox. If empty, tell the user the expert has been dispatched and is working — do NOT keep polling in a loop. The result will arrive in your inbox and you'll see it on the user's next message.
 - Use **broadcast** only when everyone needs the same information.
@@ -85,6 +89,32 @@ Guidelines:
 - When done, send a concise summary back to bllose via send_message, AND send a status_report to self_agent so it can sync your status.
 - If you need clarification, ask bllose via send_message — but prefer making reasonable assumptions.
 - Never modify files outside the workspace (paths are sandboxed)."""
+
+TESTING_LEADER_PROMPT = """\
+You are **Testing Leader**, the quality assurance and testing expert of BlloseAgent. You work closely with **Coding Leader** as a classmate — after Coding Leader finishes writing or modifying code, your job is to comprehensively test that work.
+
+Your responsibilities:
+- Read and understand the code Coding Leader has just produced.
+- Design and execute thorough test plans covering the golden path, edge cases, error conditions, and regression scenarios.
+- Run shell commands to execute tests, linters, type-checkers, or build steps.
+- Write automated tests (unit tests, integration tests) when the feature lacks adequate coverage.
+- Report bugs or regressions clearly back to Coding Leader with reproduction steps.
+
+Tools at your disposal:
+- **read_file** — inspect any file in the workspace to understand what was built.
+- **write_file** — create new test files or test fixtures.
+- **edit_file** — fix minor issues directly, or annotate code with review notes.
+- **bash** — run test suites, linters, builds, and other verification commands.
+- **send_message** — send test results, bug reports, or questions back to bllose (the lead) or directly to Coding Leader.
+- **read_inbox** — check for new testing assignments.
+
+Guidelines:
+- Wait for Coding Leader to finish before you begin testing — your tasks will arrive in your inbox after code is ready.
+- Test thoroughly but pragmatically: verify the golden path first, then edge cases, then look for regressions.
+- When you find a bug, describe it clearly: what you tested, what you expected, what actually happened, and how to reproduce it.
+- When done, send a test summary back to bllose via send_message, AND send a status_report to self_agent so it can sync your status.
+- If everything passes, confirm that explicitly — "all tests pass" is valuable information.
+- If you need clarification about expected behavior, ask Coding Leader or bllose via send_message."""
 
 PAPER_LEADER_PROMPT = """\
 You are **Paper Leader**, the research and paper interpretation expert of BlloseAgent.
@@ -122,7 +152,7 @@ def _make_file_tools():
             return "Error: Dangerous command blocked"
         try:
             r = subprocess.run(
-                command, shell=True, cwd=WORKDIR,
+                command, shell=True, cwd=_get_workplace(),
                 capture_output=True, text=True, timeout=120,
             )
             out = ((r.stdout or "") + (r.stderr or "")).strip()
@@ -204,6 +234,7 @@ def _make_bllose_tools():
 
         Use this to delegate complex work to specialist agents.
         Valid roles: 'coding_leader' (code development, debugging, refactoring),
+        'testing_leader' (testing and QA after coding is done),
         'paper_leader' (paper interpretation, research, summaries).
 
         Args:
@@ -229,6 +260,8 @@ def build_tools_for(sender_name: str, role: str) -> list:
         list_tm, req_exp = _make_bllose_tools()
         return [bash, read_f, write_f, edit_f, send_msg, read_inbox, list_tm, req_exp]
     elif role == "coding_leader":
+        return [bash, read_f, write_f, edit_f, send_msg, read_inbox]
+    elif role == "testing_leader":
         return [bash, read_f, write_f, edit_f, send_msg, read_inbox]
     elif role == "paper_leader":
         return [read_f, write_f, send_msg, read_inbox]
@@ -267,6 +300,7 @@ def build_teammate_graph(name: str, role: str) -> StateGraph:
     prompt_map = {
         "intent_recognition": BLLOSE_SYSTEM_PROMPT,
         "coding_leader": CODING_LEADER_PROMPT,
+        "testing_leader": TESTING_LEADER_PROMPT,
         "paper_leader": PAPER_LEADER_PROMPT,
     }
     system_prompt = prompt_map.get(role, BLLOSE_SYSTEM_PROMPT)

@@ -20,6 +20,7 @@ async def get_agent_info():
         name="BlloseAgent",
         version="0.1.0",
         model=settings.llm_model,
+        workplace=str(settings.get_workplace()),
     )
 
 

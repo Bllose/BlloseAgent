@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChatContext } from "@/context/ChatContext";
 import { ChatMessage as MessageBubble } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { getAgentInfo } from "@/lib/api";
 
 export function ChatPanel() {
   const { messages, isStreaming, sendMessage } = useChatContext();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [workplace, setWorkplace] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAgentInfo().then(info => setWorkplace(info.workplace)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -69,6 +75,28 @@ export function ChatPanel() {
               <br />
               Start a conversation below.
             </p>
+            {workplace && (
+              <div
+                style={{
+                  marginTop: 20,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 16px",
+                  borderRadius: 100,
+                  background: "var(--color-bg)",
+                  border: "1px solid var(--color-border)",
+                  fontSize: 12,
+                  color: "var(--color-text-secondary)",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 500, color: "var(--color-text-muted)" }}>
+                  workspace
+                </span>
+                <span style={{ color: "var(--color-text)" }}>{workplace}</span>
+              </div>
+            )}
           </div>
         )}
         {messages.map((msg) => (

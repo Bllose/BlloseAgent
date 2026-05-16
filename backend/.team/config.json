@@ -5,13 +5,13 @@
       "name": "self_agent",
       "role": "self_agent",
       "status": "idle",
-      "status_updated_at": 1778917884.3508835
+      "status_updated_at": 1778934104.0427659
     },
     {
       "name": "bllose",
       "role": "intent_recognition",
       "status": "idle",
-      "status_updated_at": 1778919290.3654985
+      "status_updated_at": 1778935201.1340988
     },
     {
       "name": "Coding Leader",
@@ -28,14 +28,20 @@
     {
       "name": "coding_leader",
       "role": "coding_leader",
-      "status": "idle",
-      "status_updated_at": 1778919272.882067
+      "status": "working",
+      "status_updated_at": 1778935198.6474469
     },
     {
       "name": "paper_leader",
       "role": "paper_leader",
       "status": "idle",
-      "status_updated_at": 1778919272.8830638
+      "status_updated_at": 1778935198.2074614
+    },
+    {
+      "name": "testing_leader",
+      "role": "testing_leader",
+      "status": "idle",
+      "status_updated_at": 1778935198.2069445
     }
   ]
 }
