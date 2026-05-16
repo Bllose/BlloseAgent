@@ -10,62 +10,102 @@ export function ChatMessage({ message }: { message: ChatMessageType }) {
       style={{
         display: "flex",
         justifyContent: isUser ? "flex-end" : "flex-start",
-        marginBottom: 16,
+        marginBottom: 20,
+        paddingLeft: isUser ? 48 : 0,
+        paddingRight: isUser ? 0 : 48,
       }}
     >
-      <div style={{ maxWidth: "75%" }}>
-        {/* thinking 区域 — 灰色背板、小字体 */}
+      <div style={{ maxWidth: "100%" }}>
+        {/* Thinking section */}
         {message.thinking && (
           <div
             style={{
-              padding: "8px 14px",
-              marginBottom: 6,
-              borderRadius: 12,
-              background: "#f5f5f5",
-              color: "#999",
+              padding: "10px 16px",
+              marginBottom: 8,
+              borderRadius: "var(--radius)",
+              background: "var(--color-primary-bg)",
+              border: "1px solid #ede9fe",
+              color: "var(--color-text-secondary)",
               fontSize: 12,
-              lineHeight: 1.5,
+              lineHeight: 1.6,
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
-              borderLeft: "3px solid #d9d9d9",
             }}
           >
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--color-primary)",
+                marginBottom: 6,
+              }}
+            >
+              Thinking
+            </div>
             {message.thinking}
           </div>
         )}
 
-        {/* content 区域 — 保持原有样式 */}
+        {/* Content bubble */}
         {message.content && (
           <div
             style={{
               padding: "12px 18px",
-              borderRadius: 16,
-              background: isUser ? "#1677ff" : "#ffffff",
-              color: isUser ? "#fff" : "#1a1a1a",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+              borderRadius: "var(--radius-lg)",
+              background: isUser ? "var(--color-primary)" : "var(--color-bg)",
+              color: isUser ? "#fff" : "var(--color-text)",
+              border: isUser ? "none" : "1px solid var(--color-border)",
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
-              lineHeight: 1.6,
+              lineHeight: 1.65,
+              fontSize: 14,
             }}
           >
             {message.content}
           </div>
         )}
 
-        {/* 空消息时显示 loading */}
+        {/* Loading dots */}
         {!message.thinking && !message.content && (
           <div
             style={{
-              padding: "12px 18px",
-              borderRadius: 16,
-              background: "#ffffff",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+              padding: "14px 20px",
+              borderRadius: "var(--radius-lg)",
+              background: "var(--color-bg)",
+              border: "1px solid var(--color-border)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            <span style={{ opacity: 0.4 }}>Thinking...</span>
+            <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+              Thinking
+            </span>
+            <span style={{ display: "flex", gap: 3 }}>
+              <Dot delay={0} />
+              <Dot delay={0.15} />
+              <Dot delay={0.3} />
+            </span>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function Dot({ delay }: { delay: number }) {
+  return (
+    <span
+      style={{
+        width: 5,
+        height: 5,
+        borderRadius: "50%",
+        background: "var(--color-primary)",
+        opacity: 0.4,
+        animation: `pulse 1s ${delay}s ease-in-out infinite`,
+      }}
+    />
   );
 }

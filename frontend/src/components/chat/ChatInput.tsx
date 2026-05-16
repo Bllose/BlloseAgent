@@ -31,47 +31,56 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     [handleSubmit],
   );
 
+  const canSend = value.trim() && !disabled;
+
   return (
     <form
       onSubmit={handleSubmit}
       style={{
         display: "flex",
         gap: 10,
-        padding: "16px 0 0",
-        borderTop: "1px solid #f0f0f0",
+        padding: "16px 20px 20px",
+        borderTop: "1px solid var(--color-border-light)",
+        background: "var(--color-surface)",
       }}
     >
       <textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+        placeholder="Type a message... (Enter ↵ to send)"
         disabled={disabled}
         rows={2}
         style={{
           flex: 1,
-          padding: "10px 14px",
-          borderRadius: 10,
-          border: "1px solid #e0e0e0",
+          padding: "11px 16px",
+          borderRadius: "var(--radius)",
+          border: "1px solid var(--color-border)",
           fontSize: 14,
           resize: "none",
           outline: "none",
           fontFamily: "inherit",
+          background: "var(--color-bg)",
+          transition: "border-color var(--transition)",
+          lineHeight: 1.5,
         }}
       />
       <button
         type="submit"
-        disabled={disabled || !value.trim()}
+        disabled={!canSend}
         style={{
-          padding: "10px 24px",
-          borderRadius: 10,
+          padding: "0 28px",
+          borderRadius: "var(--radius)",
           border: "none",
-          background: disabled || !value.trim() ? "#d9d9d9" : "#1677ff",
+          background: canSend ? "var(--color-primary)" : "var(--color-border)",
           color: "#fff",
           fontSize: 14,
           fontWeight: 600,
-          cursor: disabled || !value.trim() ? "not-allowed" : "pointer",
+          cursor: canSend ? "pointer" : "default",
+          fontFamily: "inherit",
+          transition: "background var(--transition)",
           alignSelf: "flex-end",
+          height: 42,
           whiteSpace: "nowrap",
         }}
       >

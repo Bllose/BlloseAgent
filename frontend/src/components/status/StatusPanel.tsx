@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import type { AgentStatus, TokenStats } from "@/types";
 import { getAgentStatuses, getTokenStats } from "@/lib/api";
 
-const STATUS_COLORS: Record<string, string> = {
-  idle: "#22c55e",
-  working: "#3b82f6",
-  starting: "#f59e0b",
-  shutdown: "#9ca3af",
-  error: "#ef4444",
+const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
+  idle: { color: "#22c55e", bg: "#f0fdf4" },
+  working: { color: "#3b82f6", bg: "#eff6ff" },
+  starting: { color: "#f59e0b", bg: "#fffbeb" },
+  shutdown: { color: "#9ca3af", bg: "#f9fafb" },
+  error: { color: "#ef4444", bg: "#fef2f2" },
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -19,8 +19,8 @@ const ROLE_LABELS: Record<string, string> = {
   self_agent: "Self Agent",
 };
 
-function statusColor(status: string): string {
-  return STATUS_COLORS[status] || "#9ca3af";
+function statusConfig(status: string) {
+  return STATUS_CONFIG[status] || STATUS_CONFIG.shutdown;
 }
 
 function roleLabel(role: string): string {
@@ -76,7 +76,14 @@ export function StatusPanel() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", color: "#999", padding: 48, fontSize: 14 }}>
+      <div
+        style={{
+          textAlign: "center",
+          color: "var(--color-text-muted)",
+          padding: 64,
+          fontSize: 14,
+        }}
+      >
         Loading agent status...
       </div>
     );
@@ -84,14 +91,22 @@ export function StatusPanel() {
 
   if (error) {
     return (
-      <div style={{ textAlign: "center", color: "#ef4444", padding: 48, fontSize: 14 }}>
+      <div
+        style={{
+          textAlign: "center",
+          color: "var(--color-error)",
+          padding: 64,
+          fontSize: 14,
+        }}
+      >
         Failed to load: {error}
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "20px 24px", overflowY: "auto", height: "100%" }}>
+    <div style={{ padding: "20px 24px 0", overflowY: "auto", height: "100%" }}>
+      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -100,38 +115,49 @@ export function StatusPanel() {
           marginBottom: 20,
         }}
       >
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#333" }}>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 16,
+            fontWeight: 600,
+            color: "var(--color-text)",
+          }}
+        >
           Agent Cluster
         </h2>
-        <span style={{ fontSize: 12, color: "#999" }}>
-          {agents.length} agent{agents.length !== 1 ? "s" : ""} &middot; auto-refresh every 5s
+        <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+          {agents.length} agent{agents.length !== 1 ? "s" : ""} &middot;
+          auto-refresh every 5s
         </span>
       </div>
 
+      {/* Grid */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
           gap: 16,
         }}
       >
         {agents.map((a) => {
+          const sc = statusConfig(a.status);
           const tokens = tokenMap[a.name];
+
           return (
             <div
               key={a.name}
               style={{
-                background: "#fff",
-                borderRadius: 10,
+                background: "var(--color-surface)",
+                borderRadius: "var(--radius)",
                 padding: "20px 24px",
-                border: "1px solid #e8e8e8",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                border: "1px solid var(--color-border-light)",
                 display: "flex",
                 flexDirection: "column",
-                gap: 10,
+                gap: 12,
+                transition: "box-shadow var(--transition)",
               }}
             >
-              {/* Header: name + status badge */}
+              {/* Name + status */}
               <div
                 style={{
                   display: "flex",
@@ -139,20 +165,22 @@ export function StatusPanel() {
                   justifyContent: "space-between",
                 }}
               >
-                <span style={{ fontSize: 15, fontWeight: 600, color: "#333" }}>
+                <span
+                  style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text)" }}
+                >
                   {a.name}
                 </span>
                 <span
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 5,
+                    gap: 6,
                     fontSize: 11,
-                    fontWeight: 500,
-                    color: statusColor(a.status),
-                    background: `${statusColor(a.status)}14`,
-                    padding: "3px 10px",
-                    borderRadius: 20,
+                    fontWeight: 600,
+                    color: sc.color,
+                    background: sc.bg,
+                    padding: "4px 12px",
+                    borderRadius: 100,
                   }}
                 >
                   <span
@@ -160,8 +188,7 @@ export function StatusPanel() {
                       width: 7,
                       height: 7,
                       borderRadius: "50%",
-                      background: statusColor(a.status),
-                      display: "inline-block",
+                      background: sc.color,
                     }}
                   />
                   {a.status}
@@ -169,49 +196,44 @@ export function StatusPanel() {
               </div>
 
               {/* Role */}
-              <div style={{ fontSize: 13, color: "#888" }}>
+              <div style={{ fontSize: 13, color: "var(--color-text-muted)" }}>
                 {roleLabel(a.role)}
               </div>
 
-              {/* Token usage */}
+              {/* Token stats */}
               {tokens && tokens.turn_count > 0 ? (
                 <div
                   style={{
                     display: "flex",
-                    gap: 12,
-                    padding: "10px 12px",
-                    background: "#f8f9ff",
-                    borderRadius: 8,
-                    border: "1px solid #eef0ff",
+                    gap: 0,
+                    borderRadius: "var(--radius-sm)",
+                    overflow: "hidden",
+                    border: "1px solid var(--color-border-light)",
                   }}
                 >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, color: "#aaa", marginBottom: 2 }}>
-                      Tokens
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#444" }}>
-                      {formatTokens(tokens.total_tokens)}
-                    </div>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, color: "#aaa", marginBottom: 2 }}>
-                      In / Out
-                    </div>
-                    <div style={{ fontSize: 12, color: "#666" }}>
-                      {formatTokens(tokens.total_input)} / {formatTokens(tokens.total_output)}
-                    </div>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, color: "#aaa", marginBottom: 2 }}>
-                      Max Input
-                    </div>
-                    <div style={{ fontSize: 12, color: "#666" }}>
-                      {formatTokens(tokens.max_input)}
-                    </div>
-                  </div>
+                  <StatCell label="Tokens" value={formatTokens(tokens.total_tokens)} />
+                  <StatCell
+                    label="In / Out"
+                    value={`${formatTokens(tokens.total_input)} / ${formatTokens(tokens.total_output)}`}
+                    borderLeft
+                  />
+                  <StatCell
+                    label="Max In"
+                    value={formatTokens(tokens.max_input)}
+                    borderLeft
+                  />
                 </div>
               ) : (
-                <div style={{ fontSize: 11, color: "#ccc" }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--color-text-muted)",
+                    padding: "8px 12px",
+                    background: "var(--color-bg)",
+                    borderRadius: "var(--radius-sm)",
+                    textAlign: "center",
+                  }}
+                >
                   No token usage yet
                 </div>
               )}
@@ -221,11 +243,12 @@ export function StatusPanel() {
                 <div
                   style={{
                     fontSize: 12,
-                    color: "#999",
+                    color: "var(--color-text-secondary)",
                     lineHeight: 1.5,
-                    padding: "8px 12px",
-                    background: "#fafafa",
-                    borderRadius: 6,
+                    padding: "10px 14px",
+                    background: "var(--color-bg)",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--color-border-light)",
                   }}
                 >
                   {a.details}
@@ -237,10 +260,53 @@ export function StatusPanel() {
       </div>
 
       {agents.length === 0 && (
-        <div style={{ textAlign: "center", color: "#999", padding: 48, fontSize: 14 }}>
+        <div
+          style={{
+            textAlign: "center",
+            color: "var(--color-text-muted)",
+            padding: 64,
+            fontSize: 14,
+          }}
+        >
           No agents registered.
         </div>
       )}
+    </div>
+  );
+}
+
+function StatCell({
+  label,
+  value,
+  borderLeft,
+}: {
+  label: string;
+  value: string;
+  borderLeft?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        padding: "10px 14px",
+        background: "var(--color-bg)",
+        textAlign: "center",
+        borderLeft: borderLeft ? "1px solid var(--color-border-light)" : "none",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          color: "var(--color-text-muted)",
+          marginBottom: 3,
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text)" }}>
+        {value}
+      </div>
     </div>
   );
 }

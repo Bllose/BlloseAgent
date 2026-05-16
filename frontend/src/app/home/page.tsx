@@ -9,10 +9,16 @@ import { getTokenStats } from "@/lib/api";
 
 type Tab = "chat" | "status";
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "chat", label: "Chat" },
-  { key: "status", label: "Status" },
+const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: "chat", label: "Chat", icon: "💬" },
+  { key: "status", label: "Agents", icon: "⚡" },
 ];
+
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
 
 export default function HomePage() {
   const { isLoggedIn, email, logout } = useAuth();
@@ -33,62 +39,116 @@ export default function HomePage() {
         const stats = await getTokenStats();
         if (!cancelled) setTotalTokens(stats.total_tokens);
       } catch {
-        // token stats not critical — ignore errors
+        // token stats not critical
       }
     }
     fetchTokens();
     const interval = setInterval(fetchTokens, 8000);
-    return () => { cancelled = true; clearInterval(interval); };
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   if (!isLoggedIn) return null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f2f5", display: "flex", flexDirection: "column" }}>
-      {/* Top bar */}
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--color-bg)",
+        overflow: "hidden",
+      }}
+    >
+      {/* ── Header ────────────────────────────────── */}
       <header
         style={{
-          background: "#fff",
-          padding: "0 24px",
-          height: 56,
+          background: "var(--color-surface)",
+          padding: "0 32px",
+          height: 60,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          borderBottom: "1px solid var(--color-border-light)",
           flexShrink: 0,
         }}
       >
+        {/* Left — branding */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 18, fontWeight: 700 }}>BlloseAgent</span>
+          <div
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "var(--radius-sm)",
+              background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>B</span>
+          </div>
+          <span
+            style={{
+              fontSize: 17,
+              fontWeight: 700,
+              color: "var(--color-text)",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            BlloseAgent
+          </span>
           {totalTokens !== null && totalTokens > 0 && (
             <span
               style={{
                 fontSize: 11,
-                color: "#888",
-                background: "#f5f5f5",
-                padding: "2px 10px",
-                borderRadius: 10,
+                fontWeight: 600,
+                color: "var(--color-text-secondary)",
+                background: "var(--color-bg)",
+                padding: "3px 12px",
+                borderRadius: 100,
+                border: "1px solid var(--color-border)",
               }}
             >
-              {totalTokens >= 1000
-                ? `${(totalTokens / 1000).toFixed(1)}K`
-                : totalTokens}{" "}
-              tokens
+              {formatTokens(totalTokens)} tokens
             </span>
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: 14, color: "#666" }}>{email}</span>
+        {/* Right — user */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span
+            style={{
+              fontSize: 13,
+              color: "var(--color-text-secondary)",
+            }}
+          >
+            {email}
+          </span>
           <button
             onClick={logout}
             style={{
-              padding: "6px 16px",
-              border: "1px solid #d9d9d9",
-              borderRadius: 6,
-              background: "#fff",
+              padding: "7px 18px",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--color-surface)",
               fontSize: 13,
+              fontWeight: 500,
+              color: "var(--color-text-secondary)",
               cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all var(--transition)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-error)";
+              e.currentTarget.style.color = "var(--color-error)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-border)";
+              e.currentTarget.style.color = "var(--color-text-secondary)";
             }}
           >
             Logout
@@ -96,39 +156,49 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Tab bar */}
+      {/* ── Tab bar ──────────────────────────────── */}
       <nav
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #f0f0f0",
+          background: "var(--color-surface)",
+          borderBottom: "1px solid var(--color-border-light)",
           display: "flex",
-          gap: 0,
-          padding: "0 24px",
+          gap: 4,
+          padding: "0 32px",
           flexShrink: 0,
         }}
       >
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              padding: "12px 20px",
-              border: "none",
-              background: "none",
-              fontSize: 14,
-              fontWeight: activeTab === tab.key ? 600 : 400,
-              color: activeTab === tab.key ? "#1677ff" : "#666",
-              borderBottom: activeTab === tab.key ? "2px solid #1677ff" : "2px solid transparent",
-              cursor: "pointer",
-              transition: "color 0.2s, border-color 0.2s",
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const active = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: "12px 22px",
+                border: "none",
+                background: "none",
+                fontSize: 14,
+                fontWeight: active ? 600 : 400,
+                color: active ? "var(--color-primary)" : "var(--color-text-secondary)",
+                borderBottom: active
+                  ? "2px solid var(--color-primary)"
+                  : "2px solid transparent",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "all var(--transition)",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+              }}
+            >
+              <span style={{ fontSize: 15 }}>{tab.icon}</span>
+              {tab.label}
+            </button>
+          );
+        })}
       </nav>
 
-      {/* Tab content */}
+      {/* ── Content ──────────────────────────────── */}
       <main
         style={{
           flex: 1,
@@ -136,6 +206,7 @@ export default function HomePage() {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          padding: "24px 32px",
         }}
       >
         <div
@@ -144,14 +215,31 @@ export default function HomePage() {
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            background: "#fff",
+            background: "var(--color-surface)",
+            borderRadius: "var(--radius-lg)",
+            boxShadow: "var(--shadow-xs)",
+            border: "1px solid var(--color-border-light)",
             overflow: "hidden",
           }}
         >
-          <div style={{ display: activeTab === "chat" ? "flex" : "none", flex: 1, minHeight: 0, flexDirection: "column" }}>
+          <div
+            style={{
+              display: activeTab === "chat" ? "flex" : "none",
+              flex: 1,
+              minHeight: 0,
+              flexDirection: "column",
+            }}
+          >
             <ChatPanel />
           </div>
-          <div style={{ display: activeTab === "status" ? "flex" : "none", flex: 1, minHeight: 0, flexDirection: "column" }}>
+          <div
+            style={{
+              display: activeTab === "status" ? "flex" : "none",
+              flex: 1,
+              minHeight: 0,
+              flexDirection: "column",
+            }}
+          >
             <StatusPanel />
           </div>
         </div>

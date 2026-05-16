@@ -71,20 +71,60 @@ export function ChatPanel() {
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: 0,
+      }}
+    >
       <div
         ref={scrollRef}
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          padding: "0 20px 8px",
+          padding: "20px 20px 8px",
         }}
       >
         {messages.length === 0 && (
-          <p style={{ textAlign: "center", color: "#bbb", marginTop: 48, fontSize: 14 }}>
-            Send a message to start chatting with BlloseAgent.
-          </p>
+          <div
+            style={{
+              textAlign: "center",
+              paddingTop: 80,
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "var(--radius)",
+                background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 18,
+              }}
+            >
+              <span style={{ color: "#fff", fontSize: 26 }}>B</span>
+            </div>
+            <h2
+              style={{
+                fontSize: 18,
+                fontWeight: 600,
+                color: "var(--color-text)",
+                marginBottom: 8,
+              }}
+            >
+              Welcome to BlloseAgent
+            </h2>
+            <p style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
+              Ask me to write code, read papers, or delegate tasks to the expert team.
+              <br />
+              Start a conversation below.
+            </p>
+          </div>
         )}
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />

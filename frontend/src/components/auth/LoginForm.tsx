@@ -5,6 +5,60 @@ import Link from "next/link";
 import { validateUser } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 
+const s = {
+  error: {
+    padding: "10px 14px",
+    marginBottom: 20,
+    borderRadius: "var(--radius-sm)",
+    background: "var(--color-error-bg)",
+    color: "var(--color-error)",
+    fontSize: 13,
+    border: "1px solid #fecaca",
+  },
+  field: { marginBottom: 18 },
+  label: {
+    display: "block",
+    marginBottom: 6,
+    fontSize: 13,
+    fontWeight: 600,
+    color: "var(--color-text-secondary)",
+    letterSpacing: "0.01em",
+  },
+  input: {
+    width: "100%",
+    padding: "11px 14px",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius)",
+    fontSize: 14,
+    outline: "none",
+    fontFamily: "inherit",
+    background: "var(--color-bg)",
+    transition: "border-color var(--transition), box-shadow var(--transition)",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+  },
+  button: {
+    width: "100%",
+    padding: "12px 0",
+    background: "var(--color-primary)",
+    color: "#fff",
+    border: "none",
+    borderRadius: "var(--radius)",
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    transition: "background var(--transition), transform var(--transition)",
+    marginTop: 4,
+  },
+  footer: {
+    textAlign: "center" as const,
+    marginTop: 20,
+    fontSize: 13,
+    color: "var(--color-text-secondary)",
+  },
+  link: { color: "var(--color-primary)", fontWeight: 600 },
+};
+
 export function LoginForm() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
@@ -30,70 +84,37 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      {error && (
-        <p style={{ color: "#ff4d4f", marginBottom: 16, fontSize: 14 }}>{error}</p>
-      )}
+      {error && <div style={s.error}>{error}</div>}
 
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500 }}>
-          Email
-        </label>
+      <div style={s.field}>
+        <label style={s.label}>Email</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Enter your email"
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d9d9d9",
-            borderRadius: 8,
-            fontSize: 14,
-            outline: "none",
-          }}
+          style={s.input}
         />
       </div>
 
-      <div style={{ marginBottom: 24 }}>
-        <label style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500 }}>
-          Password
-        </label>
+      <div style={s.field}>
+        <label style={s.label}>Password</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your password"
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d9d9d9",
-            borderRadius: 8,
-            fontSize: 14,
-            outline: "none",
-          }}
+          style={s.input}
         />
       </div>
 
-      <button
-        type="submit"
-        style={{
-          width: "100%",
-          padding: "10px 0",
-          background: "#1677ff",
-          color: "#fff",
-          border: "none",
-          borderRadius: 8,
-          fontSize: 16,
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
+      <button type="submit" style={s.button}>
         Log In
       </button>
 
-      <p style={{ textAlign: "center", marginTop: 16, fontSize: 14, color: "#666" }}>
+      <p style={s.footer}>
         Don&apos;t have an account?{" "}
-        <Link href="/register" style={{ color: "#1677ff", textDecoration: "none" }}>
+        <Link href="/register" style={s.link}>
           Register
         </Link>
       </p>
